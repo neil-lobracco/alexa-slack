@@ -1,0 +1,8 @@
+[package]
+name = "alexa-slack"
+version = "0.1.0"
+authors = ["Neil LoBracco <neil.lobracco@gmail.com>"]
+
+[dependencies]
+slack_api = "0.15.0"
+hyper = "0.9.4"
