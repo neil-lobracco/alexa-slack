@@ -2,9 +2,12 @@
 extern crate iron;
 extern crate bodyparser;
 extern crate serde_json;
-use std::env;
 use iron::prelude::*;
 use serde_json::value::Value;
+use std::collections::HashMap;
+
+
+include!(concat!(env!("OUT_DIR"), "/response.rs"));
 
 fn main() {
     let chain = Chain::new(handle_request);
@@ -71,7 +74,6 @@ fn handle_object(m: &serde_json::value::Map<String,serde_json::value::Value>) ->
 }
 
 fn handle_intent_object(m: &serde_json::value::Map<String,Value>) -> IronResult<Response> {
-    println!("{:?}",m);
     match m.get("name") {
         Some(i) => {
             match i {
@@ -96,9 +98,38 @@ fn handle_intent_object(m: &serde_json::value::Map<String,Value>) -> IronResult<
 }
 
 fn handle_intent_request_object(name: &str, m: &serde_json::value::Map<String,Value>) -> IronResult<Response> {
-    Ok(Response::with((iron::status::Ok, "Sup dog.")))
+    let mut slots = HashMap::new();
+    for (k,v) in m {
+        if let &Value::Object(ref o) = v {
+            if let Some(sv) = o.get("value") {
+                if let &Value::String(ref s) = sv {
+                    slots.insert(k,s);
+                }
+            }
+        }
+    }
+    let ir = IntentRequest { name: name, slots: &slots };
+    handle_intent_request(&ir)
+}
+fn handle_intent_request(ir: &IntentRequest) -> IronResult<Response> {
+    println!("{:?}",ir);
+    match ir.name {
+        "DoubleNumber" => handleDNRequest(&ir),
+        _ => Ok(Response::with((iron::status::Ok, "Sup dog."))),
+    }
+}
+fn handleDNRequest(ir: &IntentRequest) -> IronResult<Response> {
+    let response = AlexaResponse::new();
+    let encoded = serde_json::to_string(&response).unwrap();
+    Ok(Response::with((iron::status::Ok, encoded)))
 }
 
+
+#[derive(Debug)]
+pub struct IntentRequest<'a> {
+    name: &'a str,
+    slots: &'a HashMap<&'a String, &'a String>,
+}
 
 
 #[cfg(test)]

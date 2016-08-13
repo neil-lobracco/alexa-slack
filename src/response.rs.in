@@ -1,0 +1,45 @@
+#[derive(Serialize)]
+pub struct AlexaResponse<'a> {
+    version: &'static str,
+    sessionAttribute: Option<HashMap<String,serde_json::value::Value>>,
+    response: AlexaResponseBody<'a>,
+}
+
+#[derive(Serialize)]
+pub struct AlexaResponseBody<'a> {
+    outputSpeech: Option<OutputSpeech<'a>>,
+    card: Option<Card>,
+    reprompt: Option<Reprompt>,
+    shouldEndSession: bool,
+}
+
+#[derive(Serialize)]
+pub struct OutputSpeech<'a> {
+    #[serde(rename="type")]
+    type_name: &'a str,
+    text: Option<&'a str>,
+    ssml: Option<&'a str>,
+}
+
+#[derive(Serialize)]
+pub struct Card {
+}
+
+#[derive(Serialize)]
+pub struct Reprompt {
+}
+
+impl<'a> AlexaResponse<'a> {
+    fn new() -> AlexaResponse<'a> {
+        AlexaResponse {
+            version: "1.0",
+            sessionAttribute: None,
+            response: AlexaResponseBody {
+                outputSpeech: Some(OutputSpeech { type_name: "text", text: Some("This is created by Rust"), ssml: None }),
+                card: None,
+                reprompt: None,
+                shouldEndSession: true,
+            }
+        }
+    }
+}
