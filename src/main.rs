@@ -110,7 +110,7 @@ fn handle_intent_request_object(name: &str, m: &serde_json::value::Map<String,Va
         if let &Value::Object(ref o) = v {
             if let Some(sv) = o.get("value") {
                 if let &Value::String(ref s) = sv {
-                    slots.insert(k,s);
+                    slots.insert(k.as_str(),s);
                 }
             }
         }
@@ -126,7 +126,15 @@ fn handle_intent_request(ir: &IntentRequest) -> IronResult<Response> {
     }
 }
 fn handleDNRequest(ir: &IntentRequest) -> IronResult<Response> {
-    let response = AlexaResponse::new();
+    let answer = match ir.slots.get("num") {
+        Some(ref s) => {
+            let num: f64 = s.parse().unwrap();
+            let doubled = num * 2.0f64;
+            format!("Double {} is {}",num,doubled)
+        },
+        _ => "I don't understand".to_owned(),
+    };
+    let response = AlexaResponse::new(&answer);
     let encoded = serde_json::to_string(&response).unwrap();
     Ok(Response::with((iron::status::Ok, encoded)))
 }
@@ -135,7 +143,7 @@ fn handleDNRequest(ir: &IntentRequest) -> IronResult<Response> {
 #[derive(Debug)]
 pub struct IntentRequest<'a> {
     name: &'a str,
-    slots: &'a HashMap<&'a String, &'a String>,
+    slots: &'a HashMap<&'a str, &'a String>,
 }
 
 

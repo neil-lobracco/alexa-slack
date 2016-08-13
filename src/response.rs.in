@@ -30,12 +30,12 @@ pub struct Reprompt {
 }
 
 impl<'a> AlexaResponse<'a> {
-    fn new() -> AlexaResponse<'a> {
+    fn new(answer: &'a str) -> AlexaResponse<'a> {
         AlexaResponse {
             version: "1.0",
             sessionAttributes: None,
             response: AlexaResponseBody {
-                outputSpeech: Some(OutputSpeech { type_name: "PlainText", text: Some("This is created by Rust"), ssml: None }),
+                outputSpeech: Some(OutputSpeech { type_name: "PlainText", text: Some(answer), ssml: None }),
                 card: None,
                 reprompt: None,
                 shouldEndSession: true,
