@@ -6,3 +6,6 @@ authors = ["Neil LoBracco <neil.lobracco@gmail.com>"]
 [dependencies]
 slack_api = "0.15.0"
 hyper = "0.9.4"
+iron = "0.4"
+bodyparser = "0.4.1"
+serde_json = "0.8.1"
