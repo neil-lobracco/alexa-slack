@@ -1,7 +1,7 @@
 #[derive(Serialize)]
 pub struct AlexaResponse<'a> {
     version: &'static str,
-    sessionAttribute: Option<HashMap<String,serde_json::value::Value>>,
+    sessionAttributes: Option<HashMap<String,serde_json::value::Value>>,
     response: AlexaResponseBody<'a>,
 }
 
@@ -33,9 +33,9 @@ impl<'a> AlexaResponse<'a> {
     fn new() -> AlexaResponse<'a> {
         AlexaResponse {
             version: "1.0",
-            sessionAttribute: None,
+            sessionAttributes: None,
             response: AlexaResponseBody {
-                outputSpeech: Some(OutputSpeech { type_name: "text", text: Some("This is created by Rust"), ssml: None }),
+                outputSpeech: Some(OutputSpeech { type_name: "PlainText", text: Some("This is created by Rust"), ssml: None }),
                 card: None,
                 reprompt: None,
                 shouldEndSession: true,

@@ -2,22 +2,29 @@
 extern crate iron;
 extern crate bodyparser;
 extern crate serde_json;
+extern crate router;
 use iron::prelude::*;
 use serde_json::value::Value;
 use std::collections::HashMap;
+use router::Router;
 
 
 include!(concat!(env!("OUT_DIR"), "/response.rs"));
 
 fn main() {
-    let chain = Chain::new(handle_request);
-    Iron::new(chain).http("localhost:3000").unwrap();
+    let mut router = Router::new();
+    router.get("/healthcheck",handle_healthcheck);
+    router.any("/",handle_request);
+    Iron::new(router).http("0.0.0.0:3000").unwrap();
     //let input = env::args().last().unwrap();
     //let num = input.parse::<f64>().unwrap();
     //println!("{}",num * (2 as f64));
     //let client = hyper::Client::new();
     //println!("{:?}",slack_api::channels::list(&client,"",Some(true)));
     
+}
+fn handle_healthcheck(req: &mut Request) -> IronResult<Response> {
+    Ok(Response::with((iron::status::Ok, "All is well.")))
 }
 fn handle_request(req: &mut Request) -> IronResult<Response> {
     let json_body = req.get::<bodyparser::Json>();
