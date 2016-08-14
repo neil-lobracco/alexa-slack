@@ -1,20 +1,54 @@
 //extern crate slack_api;
 extern crate iron;
-extern crate bodyparser;
-extern crate serde_json;
 extern crate router;
+extern crate alexa;
 use iron::prelude::*;
-use serde_json::value::Value;
-use std::collections::HashMap;
 use router::Router;
 
-
-include!(concat!(env!("OUT_DIR"), "/response.rs"));
-
+struct RequestHandler{}
+impl alexa::RequestHandler for RequestHandler {
+    fn handle_request(&self, req: &alexa::Request) -> alexa::Response {
+        match req.body {
+            alexa::RequestBody::IntentRequest(ref ir) => {
+                match ir.name.as_str() {
+                    "DoubleNumber" => {
+                        let num_o: Option<f64> = ir.slots.get("num").and_then(|n| n.parse().ok());
+                        match num_o {
+                            Some(num) => doubled_number_response(num),
+                            None => i_dont_understand(),
+                        }
+                    },
+                    _ => i_dont_understand(),
+                }
+            },
+            _ => i_dont_understand(),
+        }
+    }
+}
+fn doubled_number_response<'a>(num: f64) -> alexa::Response<'a> {
+        alexa::Response {
+            session_attributes: None,
+            card: None,
+            reprompt: None,
+            output_speech: Some(alexa::OutputSpeech::Text(format!("Double {} is {}",num,num * 2f64).into())),
+            should_end_session: true,
+        }
+}
+fn i_dont_understand<'a>() -> alexa::Response<'a> {
+        alexa::Response {
+            session_attributes: None,
+            card: None,
+            reprompt: None,
+            output_speech: Some(alexa::OutputSpeech::Text("Oh no, I don't understand what you said!".into())),
+            should_end_session: true,
+        }
+}
 fn main() {
     let mut router = Router::new();
     router.get("/healthcheck",handle_healthcheck);
-    router.any("/",handle_request);
+    let rh = RequestHandler{};
+    let ih = alexa::IronHandler::new("amzn1.ask.skill.b5e47314-7712-4fbf-aece-3038cbd9a5d4".to_owned(),Box::new(rh));
+    router.any("/",ih);
     Iron::new(router).http("0.0.0.0:3000").unwrap();
     //let input = env::args().last().unwrap();
     //let num = input.parse::<f64>().unwrap();
@@ -23,108 +57,10 @@ fn main() {
     //println!("{:?}",slack_api::channels::list(&client,"",Some(true)));
     
 }
-fn handle_healthcheck(req: &mut Request) -> IronResult<Response> {
-    Ok(Response::with((iron::status::Ok, "All is well.")))
+fn handle_healthcheck(_: &mut Request) -> IronResult<Response> {
+    Ok(Response::with((iron::status::Ok)))
 }
-fn handle_request(req: &mut Request) -> IronResult<Response> {
-    let json_body = req.get::<bodyparser::Json>();
-    match json_body {
-        Ok(Some(json_body)) => handle_json(&json_body),
-        Ok(None) => { println!("No body"); bad_request()},
-        Err(err) => { println!("Error: {:?}", err); bad_request() },
-    }
-}
-
-fn bad_request() -> IronResult<Response> {
-    Ok(Response::with((iron::status::BadRequest, "Bad Request")))
-}
-
-
-fn handle_json(json: &serde_json::value::Value) -> IronResult<Response> {
-    match json {
-        &serde_json::value::Value::Object(ref m) => handle_object(m),
-        _  => bad_request(),
-    }
-}
-
-fn handle_object(m: &serde_json::value::Map<String,serde_json::value::Value>) -> IronResult<Response> {
-    if let Some(r) = m.get("request") {
-        if let &Value::Object(ref ro) = r {
-            return match ro.get("type") {
-                Some(t) => {
-                    match t {
-                        &serde_json::value::Value::String(ref s) => {
-                            if s == "IntentRequest" {
-                                if let Some(i) = ro.get("intent"){
-                                    if let &Value::Object(ref io) = i {
-                                        handle_intent_object(io)
-                                    } else {
-                                        bad_request()
-                                    }
-                                }
-                                else {
-                                    bad_request()
-                                }
-                            }
-                            else {
-                                bad_request()
-                            }
-                        },
-                        _ => bad_request(),
-                    }
-                },
-                None => bad_request(),
-            }
-        }
-    }
-    bad_request()
-}
-
-fn handle_intent_object(m: &serde_json::value::Map<String,Value>) -> IronResult<Response> {
-    match m.get("name") {
-        Some(i) => {
-            match i {
-                &Value::String(ref name) => {
-                    match m.get("slots") {
-                        Some(s) => {
-                            match s {
-                                &Value::Object(ref so) => {
-                                    handle_intent_request_object(name, so)
-                                },
-                                _ => bad_request(),
-                            }
-                        },
-                        _ => bad_request(),
-                    }
-                },
-                _ => bad_request(),
-            }
-        },
-        _ => bad_request(),
-    }
-}
-
-fn handle_intent_request_object(name: &str, m: &serde_json::value::Map<String,Value>) -> IronResult<Response> {
-    let mut slots = HashMap::new();
-    for (k,v) in m {
-        if let &Value::Object(ref o) = v {
-            if let Some(sv) = o.get("value") {
-                if let &Value::String(ref s) = sv {
-                    slots.insert(k.as_str(),s);
-                }
-            }
-        }
-    }
-    let ir = IntentRequest { name: name, slots: &slots };
-    handle_intent_request(&ir)
-}
-fn handle_intent_request(ir: &IntentRequest) -> IronResult<Response> {
-    println!("{:?}",ir);
-    match ir.name {
-        "DoubleNumber" => handleDNRequest(&ir),
-        _ => Ok(Response::with((iron::status::Ok, "Sup dog."))),
-    }
-}
+/*
 fn handleDNRequest(ir: &IntentRequest) -> IronResult<Response> {
     let answer = match ir.slots.get("num") {
         Some(ref s) => {
@@ -138,13 +74,7 @@ fn handleDNRequest(ir: &IntentRequest) -> IronResult<Response> {
     let encoded = serde_json::to_string(&response).unwrap();
     Ok(Response::with((iron::status::Ok, encoded)))
 }
-
-
-#[derive(Debug)]
-pub struct IntentRequest<'a> {
-    name: &'a str,
-    slots: &'a HashMap<&'a str, &'a String>,
-}
+*/
 
 
 #[cfg(test)]
