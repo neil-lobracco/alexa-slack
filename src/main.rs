@@ -1,7 +1,8 @@
-//extern crate slack_api;
+extern crate slack_api;
 extern crate iron;
 extern crate router;
 extern crate alexa;
+extern crate hyper;
 use iron::prelude::*;
 use router::Router;
 
@@ -17,6 +18,10 @@ impl alexa::RequestHandler for RequestHandler {
                             Some(num) => doubled_number_response(num),
                             None => i_dont_understand(),
                         }
+                    },
+                    "SetReminder" => {
+                        println!("{:?}",ir.slots);
+                        i_dont_understand()
                     },
                     _ => i_dont_understand(),
                 }
