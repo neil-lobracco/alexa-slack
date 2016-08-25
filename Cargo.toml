@@ -4,8 +4,11 @@ version = "0.1.0"
 authors = ["Neil LoBracco <neil.lobracco@gmail.com>"]
 
 [dependencies]
-slack_api = "0.15.0"
+#slack_api = "0.15.0"
 iron = "0.4"
 router = "*"
 alexa = "*"
 hyper = "*"
+
+[dependencies.slack_api]
+path = "../slack-rs-api"
