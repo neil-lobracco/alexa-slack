@@ -4,6 +4,7 @@ extern crate router;
 extern crate alexa;
 extern crate hyper;
 use iron::prelude::*;
+use slack_api::*;
 use router::Router;
 use std::collections::BTreeMap;
 use std::borrow::Cow;
@@ -26,6 +27,9 @@ impl alexa::RequestHandler for RequestHandler {
                     "SetReminder" => {
                         set_reminder(&ir.slots)
                     },
+                    "ReadUnread" => {
+                        read_unread()
+                    },
                     _ => i_dont_understand(),
                 }
             },
@@ -33,6 +37,33 @@ impl alexa::RequestHandler for RequestHandler {
         }
     }
 }
+
+fn read_unread<'a>() -> alexa::Response<'a> {
+    let res = slack_api::rtm::start(&get_client(),API_KEY,Some(false),Some(false));
+    let channels = res.unwrap().channels;
+    let unread_channels = channels.iter().filter(|c| if let Some(c) = c.unread_count_display {c != 0 } else {false} ).collect::<Vec<_>>();
+    if unread_channels.len() == 0 {
+        respond_with_text("You don't have any unread messages right now".into())
+    } else {
+        respond_with_text(unread_channels.iter().map(talk_through_channel).fold("".to_owned(),|memo, s| memo + &s).into())
+    }
+}
+
+fn talk_through_channel(c: &&Channel) -> String {
+    let text = format!("{} unread messages for channel {}.  ",c.unread_count_display.unwrap(),c.name);
+    let last_read = c.last_read.as_ref().map(|s| s.as_str());
+    let messages = slack_api::channels::history(&get_client(),API_KEY,&c.id,None,last_read,None,None).unwrap().messages;
+    messages.iter().filter_map(talk_through_message).fold(text, |memo,s| memo + &s)
+}
+
+fn talk_through_message(m: &Message) -> Option<String> {
+    match m {
+        &Message::Standard { ref user, ref text , ..} => { Some(format!("{} says {}.  ",user.as_ref().unwrap(),text.as_ref().unwrap())) },
+        &Message::BotMessage { ref username, ref text , ..} => { Some(format!("{} says {}.  ",username.as_ref().map(|s| s.as_str()).unwrap_or("Unknown bot"),text.as_ref().unwrap())) },
+        _ => None,
+    }
+}
+
 fn set_reminder<'a>(slots: &BTreeMap<String,String>) -> alexa::Response<'a> {
     let at_time = match slots.get("at_time"){
         Some(t) => t,
